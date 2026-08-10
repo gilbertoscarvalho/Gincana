@@ -1,11 +1,10 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { createServer as createViteServer } from 'vite';
 import { Participant, DashboardStats, EventSettings } from './src/types.js';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Increase payload limits for handling file/image proofs in base64 format
 app.use(express.json({ limit: '15mb' }));
@@ -487,6 +486,7 @@ app.get('/api/stats', (req: Request, res: Response) => {
 // Start Express server + Vite
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
