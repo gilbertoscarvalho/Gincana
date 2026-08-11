@@ -532,6 +532,9 @@ app.post('/api/backup/import', (req: Request, res: Response) => {
   });
 });
 
+// Export app for Vercel serverless functions
+export { app };
+
 // Start Express server + Vite
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
@@ -549,9 +552,12 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server "Somos Jóias Preciosas" rodando na porta ${PORT}`);
-  });
+  // Only run app.listen if not in a Vercel serverless function environment
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server "Somos Jóias Preciosas" rodando na porta ${PORT}`);
+    });
+  }
 }
 
 startServer();
