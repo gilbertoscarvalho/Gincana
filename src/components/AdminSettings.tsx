@@ -1,0 +1,1227 @@
+import React, { useState } from 'react';
+import {
+  Settings,
+  DollarSign,
+  Target,
+  Key,
+  Calendar,
+  MapPin,
+  Save,
+  Lock,
+  CheckCircle2,
+  AlertCircle,
+  Church,
+  Plus,
+  X,
+  RotateCcw,
+  Image as ImageIcon,
+  Upload,
+  Globe,
+  Trash2,
+  Film,
+  Phone,
+  MessageCircle,
+  HardDrive,
+  CloudUpload,
+  CloudDownload,
+  RefreshCw,
+  Download,
+  FolderOpen
+} from 'lucide-react';
+import { EventSettings, GalleryMediaItem } from '../types';
+import {
+  requestGoogleDriveToken,
+  uploadBackupToDriveFolder,
+  downloadBackupFromDriveFolder,
+  downloadLocalJsonBackup,
+  readLocalJsonFile,
+  FullBackupData
+} from '../lib/googleDrive';
+
+interface AdminSettingsProps {
+  settings: EventSettings;
+  adminPasswordInput: string;
+  onUpdateSettings: (newSettings: Partial<EventSettings>, currentAdminPass: string) => Promise<boolean>;
+  onLockAdmin: () => void;
+}
+
+const DEFAULT_CONGREGATIONS_LIST = [
+  'Central',
+  'Jardim Primavera',
+  'Vila Nova',
+  'Bela Vista',
+  'Parque das Flores',
+  'Jardim América',
+  'São José'
+];
+
+const DEFAULT_GALLERY_ITEMS: GalleryMediaItem[] = [
+  {
+    id: 'm1',
+    title: 'Tocata em Conjunto - Louvor e Adoração',
+    category: 'anterior',
+    type: 'photo',
+    url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
+    description: 'Todos os instrumentistas reunidos em uma linda harmonia durante a Tocata da edição anterior.'
+  },
+  {
+    id: 'm2',
+    title: 'Gincana: Prova do Circuito e Equipes',
+    category: 'anterior',
+    type: 'photo',
+    url: 'https://images.unsplash.com/photo-1526976668912-1a811878dd37?auto=format&fit=crop&w=1200&q=80',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1526976668912-1a811878dd37?auto=format&fit=crop&w=600&q=80',
+    description: 'Momentos de muita descontração e superação das equipes no circuito de provas.'
+  },
+  {
+    id: 'm3',
+    title: 'Comunhão no Almoço Coletivo',
+    category: 'anterior',
+    type: 'photo',
+    url: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&q=80',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=600&q=80',
+    description: 'Irmãos reunidos partilhando os alimentos trazidos com muito carinho e alegria.'
+  },
+  {
+    id: 'm5',
+    title: 'Entrega de Troféus e Medalhas',
+    category: 'anterior',
+    type: 'photo',
+    url: 'https://images.unsplash.com/photo-1578269174936-2709b6aeb913?auto=format&fit=crop&w=1200&q=80',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1578269174936-2709b6aeb913?auto=format&fit=crop&w=600&q=80',
+    description: 'Celebração e reconhecimento do esforço de cada equipe participante.'
+  },
+  {
+    id: 'm6',
+    title: 'Prévia da Edição Atual (2026)',
+    category: 'atual',
+    type: 'photo',
+    url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80',
+    description: 'Preparativos a todo vapor para o grande dia! As fotos do evento atual serão publicadas aqui.'
+  }
+];
+
+export const AdminSettings: React.FC<AdminSettingsProps> = ({
+  settings,
+  adminPasswordInput,
+  onUpdateSettings,
+  onLockAdmin
+}) => {
+  const [ticketPrice, setTicketPrice] = useState<number>(settings.ticketPrice || 25);
+  const [revenueGoal, setRevenueGoal] = useState<number>(settings.revenueGoal || 2500);
+  const [newAdminPassword, setNewAdminPassword] = useState<string>('');
+  const [eventDate, setEventDate] = useState<string>(
+    settings.eventDate ? settings.eventDate.substring(0, 16) : '2026-09-07T08:30'
+  );
+  const [locationName, setLocationName] = useState<string>(settings.locationName || '');
+  const [locationAddress, setLocationAddress] = useState<string>(settings.locationAddress || '');
+  const [googleMapsEmbedUrl, setGoogleMapsEmbedUrl] = useState<string>(
+    settings.googleMapsEmbedUrl ||
+      'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3657.197479782806!2d-46.6586!3d-23.5615!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjPCsDMzJzQxLjQiUyA0NsKwMzknMzEuMCJX!5e0!3m2!1spt-BR!2sbr!4v1620000000000!5m2!1spt-BR!2sbr'
+  );
+
+  // App Identity State (Title and Logo)
+  const [eventName, setEventName] = useState<string>(settings.eventName || 'Somos Jóias Preciosas');
+  const [logoUrl, setLogoUrl] = useState<string>(settings.logoUrl || '');
+  const [logoFileName, setLogoFileName] = useState<string>('');
+  const [proofPhoneNumber, setProofPhoneNumber] = useState<string>(settings.proofPhoneNumber || '(71) 99999-9999');
+
+  // Congregations state
+  const [congregationsList, setCongregationsList] = useState<string[]>(
+    settings.congregations && settings.congregations.length > 0 ? settings.congregations : DEFAULT_CONGREGATIONS_LIST
+  );
+  const [newChurchName, setNewChurchName] = useState('');
+
+  // Gallery Photos/Videos State
+  const [galleryList, setGalleryList] = useState<GalleryMediaItem[]>(
+    settings.galleryItems && settings.galleryItems.length > 0 ? settings.galleryItems : DEFAULT_GALLERY_ITEMS
+  );
+
+  // New photo form state
+  const [newPhotoCategory, setNewPhotoCategory] = useState<'anterior' | 'atual'>('anterior');
+  const [newPhotoTitle, setNewPhotoTitle] = useState('');
+  const [newPhotoDesc, setNewPhotoDesc] = useState('');
+  const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [newPhotoType, setNewPhotoType] = useState<'photo' | 'video'>('photo');
+  const [selectedFileName, setSelectedFileName] = useState('');
+  const [activeGalleryTab, setActiveGalleryTab] = useState<'anterior' | 'atual'>('anterior');
+
+  const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Google Drive & Persistence States
+  const [driveFolderId, setDriveFolderId] = useState<string>(settings.driveFolderId || '1OgmzxYTxAKZJ62ZPcAQoTQi2GsdKrscl');
+  const [driveFolderName, setDriveFolderName] = useState<string>(settings.driveFolderName || 'Gincana_Backup');
+  const [driveAccessToken, setDriveAccessToken] = useState<string>(settings.driveAccessToken || '');
+  const [driveAutoSync, setDriveAutoSync] = useState<boolean>(settings.driveAutoSync ?? true);
+  const [driveStatusMsg, setDriveStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [driveLoading, setDriveLoading] = useState<boolean>(false);
+
+  // Trigger Google Drive OAuth Authorize
+  const handleConnectDrive = () => {
+    setDriveStatusMsg(null);
+    setDriveLoading(true);
+    requestGoogleDriveToken(
+      (token) => {
+        setDriveAccessToken(token);
+        setDriveLoading(false);
+        setDriveStatusMsg({
+          type: 'success',
+          text: 'Conectado ao Google Drive com sucesso! Agora você pode sincronizar os dados.'
+        });
+      },
+      (err) => {
+        setDriveLoading(false);
+        setDriveStatusMsg({
+          type: 'error',
+          text: 'Falha ao conectar com o Google Drive: ' + (err.message || 'Autorização não concluída.')
+        });
+      }
+    );
+  };
+
+  // Upload/Sync backup to Google Drive
+  const handleBackupToDriveNow = async () => {
+    if (!driveFolderId.trim()) {
+      setDriveStatusMsg({ type: 'error', text: 'Por favor, informe o ID da pasta do Google Drive.' });
+      return;
+    }
+    if (!driveAccessToken.trim()) {
+      setDriveStatusMsg({ type: 'error', text: 'Por favor, clique em "Conectar Google Drive" para autorizar o acesso.' });
+      return;
+    }
+
+    setDriveLoading(true);
+    setDriveStatusMsg(null);
+
+    try {
+      const res = await fetch('/api/backup/export');
+      if (!res.ok) throw new Error('Falha ao gerar o arquivo de dados do servidor.');
+      const backupData: FullBackupData = await res.json();
+
+      const result = await uploadBackupToDriveFolder(driveFolderId, driveAccessToken, backupData);
+      if (result.success) {
+        setDriveStatusMsg({ type: 'success', text: '✅ ' + result.message });
+      } else {
+        setDriveStatusMsg({ type: 'error', text: '❌ ' + result.message });
+      }
+    } catch (err: any) {
+      setDriveStatusMsg({ type: 'error', text: 'Erro ao fazer backup: ' + err.message });
+    } finally {
+      setDriveLoading(false);
+    }
+  };
+
+  // Download/Restore backup from Google Drive
+  const handleRestoreFromDriveNow = async () => {
+    if (!driveFolderId.trim()) {
+      setDriveStatusMsg({ type: 'error', text: 'Por favor, informe o ID da pasta do Google Drive.' });
+      return;
+    }
+    if (!driveAccessToken.trim()) {
+      setDriveStatusMsg({ type: 'error', text: 'Por favor, clique em "Conectar Google Drive" para autorizar o acesso.' });
+      return;
+    }
+
+    if (!window.confirm('Atenção: A restauração irá substituir todos os dados atuais da aplicação pelos dados do backup salvo no Google Drive. Deseja continuar?')) {
+      return;
+    }
+
+    setDriveLoading(true);
+    setDriveStatusMsg(null);
+
+    try {
+      const result = await downloadBackupFromDriveFolder(driveFolderId, driveAccessToken);
+      if (result.success && result.data) {
+        const importRes = await fetch('/api/backup/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            settings: result.data.settings,
+            participants: result.data.participants
+          })
+        });
+
+        if (importRes.ok) {
+          setDriveStatusMsg({ type: 'success', text: '🎉 Todos os dados e configurações foram restaurados com sucesso do Google Drive!' });
+          if (result.data.settings) {
+            setEventName(result.data.settings.eventName || eventName);
+            setLogoUrl(result.data.settings.logoUrl || logoUrl);
+            if (result.data.settings.congregations) setCongregationsList(result.data.settings.congregations);
+            if (result.data.settings.galleryItems) setGalleryList(result.data.settings.galleryItems);
+          }
+        } else {
+          throw new Error('Falha ao importar dados restaurados no servidor.');
+        }
+      } else {
+        setDriveStatusMsg({ type: 'error', text: result.message });
+      }
+    } catch (err: any) {
+      setDriveStatusMsg({ type: 'error', text: 'Erro ao restaurar do Google Drive: ' + err.message });
+    } finally {
+      setDriveLoading(false);
+    }
+  };
+
+  // Local JSON Export
+  const handleExportLocalJson = async () => {
+    try {
+      const res = await fetch('/api/backup/export');
+      if (!res.ok) throw new Error('Falha ao exportar backup.');
+      const data: FullBackupData = await res.json();
+      downloadLocalJsonBackup(data, `backup_gincana_${new Date().toISOString().slice(0, 10)}.json`);
+    } catch (err: any) {
+      alert('Erro ao baixar arquivo JSON: ' + err.message);
+    }
+  };
+
+  // Local JSON Import File
+  const handleImportLocalJsonFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!window.confirm('Deseja substituir a base de dados atual pelo arquivo JSON selecionado?')) {
+      return;
+    }
+
+    try {
+      const backupData = await readLocalJsonFile(file);
+      const res = await fetch('/api/backup/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: backupData.settings,
+          participants: backupData.participants
+        })
+      });
+
+      if (res.ok) {
+        alert('🎉 Base de dados restaurada com sucesso a partir do arquivo JSON local!');
+        window.location.reload();
+      } else {
+        alert('Erro ao importar o arquivo JSON no servidor.');
+      }
+    } catch (err: any) {
+      alert('Erro ao processar arquivo de backup: ' + err.message);
+    }
+  };
+
+  // Helper to extract clean URL if admin pastes an entire <iframe> element
+  const handleEmbedUrlChange = (val: string) => {
+    if (val.includes('<iframe') && val.includes('src=')) {
+      const match = val.match(/src=["']([^"']+)["']/);
+      if (match && match[1]) {
+        setGoogleMapsEmbedUrl(match[1]);
+        return;
+      }
+    }
+    setGoogleMapsEmbedUrl(val);
+  };
+
+  const handleAddChurch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newChurchName.trim();
+    if (!name) return;
+    if (congregationsList.some((c) => c.toLowerCase() === name.toLowerCase())) {
+      setErrorMsg('Esta congregação já está na lista.');
+      return;
+    }
+    setCongregationsList([...congregationsList, name]);
+    setNewChurchName('');
+    setErrorMsg(null);
+  };
+
+  const handleRemoveChurch = (indexToRemove: number) => {
+    setCongregationsList(congregationsList.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleRestoreDefaultChurches = () => {
+    setCongregationsList(DEFAULT_CONGREGATIONS_LIST);
+  };
+
+  // Upload Logo file
+  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      setErrorMsg('A imagem do logo é muito grande. Escolha um arquivo menor que 8MB.');
+      return;
+    }
+
+    setLogoFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Url = event.target?.result as string;
+      setLogoUrl(base64Url);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Upload local photo file
+  const handlePhotoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      setErrorMsg('A imagem é muito grande. Escolha um arquivo menor que 8MB.');
+      return;
+    }
+
+    setSelectedFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Url = event.target?.result as string;
+      setNewPhotoUrl(base64Url);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddPhotoItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPhotoTitle.trim()) {
+      setErrorMsg('Por favor informe o título da foto/vídeo.');
+      return;
+    }
+    if (!newPhotoUrl.trim()) {
+      setErrorMsg('Envie um arquivo de imagem ou insira o link da foto/vídeo.');
+      return;
+    }
+
+    const newItem: GalleryMediaItem = {
+      id: 'media-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      title: newPhotoTitle.trim(),
+      category: newPhotoCategory,
+      type: newPhotoType,
+      url: newPhotoUrl.trim(),
+      thumbnailUrl: newPhotoUrl.trim(),
+      description: newPhotoDesc.trim() || 'Foto do evento'
+    };
+
+    setGalleryList([newItem, ...galleryList]);
+    setNewPhotoTitle('');
+    setNewPhotoDesc('');
+    setNewPhotoUrl('');
+    setSelectedFileName('');
+    setErrorMsg(null);
+    setSuccessMsg('Foto adicionada à lista! Lembre-se de clicar em "Salvar Configurações" no final.');
+  };
+
+  const handleRemovePhotoItem = (idToRemove: string) => {
+    setGalleryList(galleryList.filter((item) => item.id !== idToRemove));
+  };
+
+  const handleRestoreDefaultGallery = () => {
+    setGalleryList(DEFAULT_GALLERY_ITEMS);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setSuccessMsg(null);
+    setErrorMsg(null);
+
+    try {
+      const ok = await onUpdateSettings(
+        {
+          ticketPrice: Number(ticketPrice),
+          revenueGoal: Number(revenueGoal),
+          adminPassword: newAdminPassword.trim() ? newAdminPassword.trim() : undefined,
+          eventDate: new Date(eventDate).toISOString(),
+          locationName,
+          locationAddress,
+          googleMapsEmbedUrl,
+          congregations: congregationsList,
+          galleryItems: galleryList,
+          eventName,
+          logoUrl,
+          proofPhoneNumber,
+          driveFolderId,
+          driveFolderName,
+          driveAccessToken,
+          driveAutoSync
+        },
+        adminPasswordInput
+      );
+
+      if (ok) {
+        setSuccessMsg('Configurações salvas com sucesso!');
+        setNewAdminPassword('');
+
+        // If auto sync is enabled and we have folder id + token, sync backup to drive
+        if (driveFolderId.trim() && driveAccessToken.trim() && driveAutoSync) {
+          handleBackupToDriveNow();
+        }
+      } else {
+        setErrorMsg('Não foi possível salvar as alterações. Verifique sua senha de administrador.');
+      }
+    } catch (err) {
+      setErrorMsg('Erro de conexão ao salvar configurações.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredGallery = galleryList.filter((item) => item.category === activeGalleryTab);
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      <div className="bg-slate-900 border border-amber-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-amber-500/20 text-amber-300 rounded-2xl border border-amber-500/30">
+              <Settings className="w-7 h-7" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">Configurações Gerais do Evento</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Gerencie valores, igrejas, fotos do evento e localização no Google Maps.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onLockAdmin}
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-2 border border-slate-700 self-start sm:self-auto cursor-pointer"
+          >
+            <Lock className="w-4 h-4 text-amber-400" />
+            Sair do Modo Admin
+          </button>
+        </div>
+
+        {successMsg && (
+          <div className="p-4 bg-emerald-500/20 border border-emerald-500/40 rounded-2xl text-emerald-300 text-sm flex items-center gap-3 animate-fade-in">
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="p-4 bg-rose-500/20 border border-rose-500/40 rounded-2xl text-rose-300 text-sm flex items-center gap-3 animate-fade-in">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Section 0: App Identity (Name & Logo) */}
+          <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-4">
+            <div className="border-b border-slate-800 pb-3">
+              <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                <Globe className="w-4 h-4 text-amber-400" /> Identidade Visual & Nome da Aplicação
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Personalize o nome do evento e a imagem da logo exibidos no cabeçalho superior da aplicação.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Nome do Evento / Aplicação */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-300 block">
+                  Nome da Aplicação / Título no Topo
+                </label>
+                <input
+                  type="text"
+                  value={eventName}
+                  onChange={(e) => setEventName(e.target.value)}
+                  placeholder="Ex: Somos Jóias Preciosas"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm font-bold focus:outline-none focus:border-amber-500"
+                  required
+                />
+                <p className="text-[11px] text-slate-400">
+                  Exibido no cabeçalho superior ao lado da logo do evento.
+                </p>
+              </div>
+
+              {/* Upload ou URL da Logo */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-300 block">
+                  Logo da Gincana (Imagem)
+                </label>
+                
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-900 border border-dashed border-slate-700 hover:border-amber-500 rounded-xl text-xs font-semibold text-amber-300 cursor-pointer transition-colors">
+                      <Upload className="w-4 h-4 text-amber-400" />
+                      <span>{logoFileName ? logoFileName : 'Enviar Imagem de Logo'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {logoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLogoUrl('');
+                          setLogoFileName('');
+                        }}
+                        className="p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 transition-colors cursor-pointer"
+                        title="Remover Logo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    value={logoUrl}
+                    onChange={(e) => {
+                      setLogoUrl(e.target.value);
+                      setLogoFileName('');
+                    }}
+                    placeholder="Ou cole a URL da imagem da Logo (https://...)"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Logo Preview */}
+            <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center gap-4">
+              <span className="text-[11px] font-bold text-slate-400">Pré-visualização do Topo:</span>
+              <div className="flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-2xl border border-slate-800">
+                {logoUrl && logoUrl.trim() !== '' ? (
+                  <div className="w-12 h-12 rounded-2xl overflow-hidden border border-amber-500/40 bg-slate-950 flex items-center justify-center p-0.5 shrink-0 shadow-md">
+                    <img src={logoUrl} alt="Logo Preview" className="w-full h-full object-cover rounded-xl" />
+                  </div>
+                ) : (
+                  <div className="p-2 bg-gradient-to-tr from-amber-500 to-amber-300 rounded-xl text-slate-950 font-bold shrink-0">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                )}
+                <div>
+                  <h4 className="text-sm font-extrabold text-white">{eventName || 'Somos Jóias Preciosas'}</h4>
+                  <span className="text-[10px] text-amber-300 font-medium">Gincana & Tocata • 2026</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Google Drive Persistence & Backup */}
+          <div className="space-y-4 bg-slate-950/80 border border-amber-500/30 p-5 rounded-2xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-extrabold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                <HardDrive className="w-4 h-4 text-amber-400" />
+                Armazenamento & Persistência no Google Drive
+              </h3>
+              <span className="text-[10px] px-2.5 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-full font-bold">
+                Recuperação Automática (Render Anti-Perda)
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Como o servidor do Render reinicia e reseta os arquivos locais, conecte uma pasta do Google Drive para salvar a base de dados de <strong>cadastros</strong>, <strong>comprovantes (prints/PDFs)</strong>, <strong>fotos dos eventos</strong> e <strong>configurações</strong>.
+            </p>
+
+            {/* Status Alert */}
+            {driveStatusMsg && (
+              <div
+                className={`p-3 rounded-xl text-xs flex items-center gap-2.5 ${
+                  driveStatusMsg.type === 'success'
+                    ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-200'
+                    : 'bg-rose-500/20 border border-rose-500/40 text-rose-200'
+                }`}
+              >
+                {driveStatusMsg.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                )}
+                <span>{driveStatusMsg.text}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              {/* Folder ID Field */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <FolderOpen className="w-4 h-4 text-amber-400" />
+                  ID da Pasta no Google Drive
+                </label>
+                <input
+                  type="text"
+                  value={driveFolderId}
+                  onChange={(e) => {
+                    let val = e.target.value.trim();
+                    if (val.includes('/folders/')) {
+                      const match = val.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+                      if (match && match[1]) {
+                        val = match[1];
+                      }
+                    } else if (val.includes('id=')) {
+                      const match = val.match(/id=([a-zA-Z0-9_-]+)/);
+                      if (match && match[1]) {
+                        val = match[1];
+                      }
+                    }
+                    setDriveFolderId(val);
+                  }}
+                  placeholder="Cole o ID ou o link completo da pasta do Google Drive"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-amber-200 font-mono focus:outline-none focus:border-amber-500"
+                />
+                <p className="text-[10px] text-slate-400">
+                  Cole o link completo da pasta (ex: https://drive.google.com/drive/u/0/folders/1OgmzxYTxAKZJ62ZPcAQoTQi2GsdKrscl) ou apenas o ID.
+                </p>
+              </div>
+
+              {/* OAuth Authorization Button */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Key className="w-4 h-4 text-amber-400" />
+                  Autorização Google Drive (OAuth)
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConnectDrive}
+                    disabled={driveLoading}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${driveLoading ? 'animate-spin' : ''}`} />
+                    {driveAccessToken ? 'Google Drive Conectado' : 'Conectar Google Drive'}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Status: {driveAccessToken ? '✅ Autorizado' : '⚠️ Não conectado'}
+                </p>
+              </div>
+            </div>
+
+            {/* Auto Sync Checkbox */}
+            <div className="pt-2 border-t border-slate-800 flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="driveAutoSync"
+                checked={driveAutoSync}
+                onChange={(e) => setDriveAutoSync(e.target.checked)}
+                className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
+              />
+              <label htmlFor="driveAutoSync" className="text-xs font-bold text-amber-200 cursor-pointer">
+                Sincronizar automaticamente com o Google Drive ao salvar alterações
+              </label>
+            </div>
+
+            {/* Drive Actions: Sync & Restore Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleBackupToDriveNow}
+                disabled={driveLoading}
+                className="py-3 px-4 rounded-xl bg-amber-500 text-slate-950 font-black text-xs hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
+              >
+                <CloudUpload className="w-4 h-4" />
+                Salvar & Fazer Backup no Google Drive
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRestoreFromDriveNow}
+                disabled={driveLoading}
+                className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <CloudDownload className="w-4 h-4" />
+                Restaurar Dados do Google Drive
+              </button>
+            </div>
+
+            {/* Local File Fallback Section */}
+            <div className="pt-3 border-t border-slate-800 space-y-2">
+              <span className="text-[11px] font-bold text-slate-400 block">
+                Backup Local (.JSON) - Alternativa Manual Instantânea:
+              </span>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={handleExportLocalJson}
+                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs flex items-center gap-2 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-amber-400" />
+                  Baixar Arquivo JSON Local
+                </button>
+
+                <label className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs flex items-center gap-2 cursor-pointer">
+                  <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                  Carregar Arquivo JSON Local
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportLocalJsonFile}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 1: Financial & Date Settings */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
+              <DollarSign className="w-4 h-4 text-amber-400" /> Parâmetros Financeiros & Data do Evento
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Valor por participante */}
+              <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
+                <label className="text-xs font-bold text-slate-300 block">
+                  Valor da Taxa por Participante (R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={ticketPrice}
+                  onChange={(e) => setTicketPrice(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg font-bold focus:outline-none focus:border-amber-500"
+                  required
+                />
+                <p className="text-[11px] text-slate-400">
+                  Calcula o total arrecadado no Dashboard conforme o número de inscritos.
+                </p>
+              </div>
+
+              {/* Meta Financeira */}
+              <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
+                <label className="text-xs font-bold text-slate-300 block">
+                  Meta Financeira a Atingir (R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={revenueGoal}
+                  onChange={(e) => setRevenueGoal(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg font-bold focus:outline-none focus:border-amber-500"
+                  required
+                />
+                <p className="text-[11px] text-slate-400">
+                  Meta exibida no indicador percentual de progresso do Dashboard.
+                </p>
+              </div>
+            </div>
+
+            {/* Telefone / WhatsApp de Contato para Comprovante */}
+            <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
+              <label className="text-xs font-bold text-slate-300 block flex items-center gap-1.5">
+                <Phone className="w-4 h-4 text-amber-400" /> Telefone / WhatsApp para Envio de Comprovante
+              </label>
+              <input
+                type="text"
+                value={proofPhoneNumber}
+                onChange={(e) => setProofPhoneNumber(e.target.value)}
+                placeholder="Ex: (71) 99999-9999"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm font-bold focus:outline-none focus:border-amber-500"
+              />
+              <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                <MessageCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Exibido na seção de inscrição e busca de comprovante para envio direto via WhatsApp ou ligação.</span>
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Data do Evento */}
+              <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
+                <label className="text-xs font-bold text-slate-300 block flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-amber-400" /> Data e Horário do Evento
+                </label>
+                <input
+                  type="datetime-local"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"
+                  required
+                />
+                <p className="text-[11px] text-slate-400">
+                  Define o encerramento do relógio da contagem regressiva.
+                </p>
+              </div>
+
+              {/* Alterar Senha de Admin */}
+              <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
+                <label className="text-xs font-bold text-slate-300 block flex items-center gap-1.5">
+                  <Key className="w-4 h-4 text-amber-400" /> Alterar Senha do Administrador
+                </label>
+                <input
+                  type="password"
+                  placeholder="Nova senha (deixe em branco p/ manter)"
+                  value={newAdminPassword}
+                  onChange={(e) => setNewAdminPassword(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"
+                />
+                <p className="text-[11px] text-slate-400">
+                  Protege o acesso a todas as áreas restritas do sistema.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Cadastro de Igrejas / Congregações */}
+          <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                  <Church className="w-4 h-4 text-amber-400" /> Cadastro de Igrejas / Congregações
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Adicione ou remova congregações da lista de seleção para novos inscritos.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRestoreDefaultChurches}
+                className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-amber-300 text-[11px] font-semibold flex items-center gap-1.5 border border-slate-800 transition-colors self-start sm:self-auto cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Restaurar Padrão
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newChurchName}
+                onChange={(e) => setNewChurchName(e.target.value)}
+                placeholder="Nome da congregação (Ex: Vila Nova)"
+                className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddChurch}
+                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/10 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Adicionar
+              </button>
+            </div>
+
+            <div>
+              <p className="text-[11px] text-slate-400 mb-2 font-medium">
+                Congregações cadastradas ({congregationsList.length}):
+              </p>
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1">
+                {congregationsList.map((church, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-amber-200 text-xs font-semibold hover:border-amber-500/50 transition-colors"
+                  >
+                    <span>{church}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveChurch(idx)}
+                      className="p-0.5 rounded-md hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+                      title="Remover congregação"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Cadastro de Localização & Google Maps */}
+          <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-4">
+            <div className="border-b border-slate-800 pb-3">
+              <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-amber-400" /> Cadastrar Localização no Google Maps
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Defina o nome do local, o endereço completo e o link de incorporação (embed) do mapa interativo.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-slate-300 block mb-1 font-semibold">Nome do Local</label>
+                <input
+                  type="text"
+                  value={locationName}
+                  onChange={(e) => setLocationName(e.target.value)}
+                  placeholder="Ex: Espaço e Chácara Somos Jóias Preciosas"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-300 block mb-1 font-semibold">Endereço Completo</label>
+                <input
+                  type="text"
+                  value={locationAddress}
+                  onChange={(e) => setLocationAddress(e.target.value)}
+                  placeholder="Ex: Rua das Flores, 700 - Bairro das Palmeiras"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-300 block mb-1 font-semibold flex items-center gap-1">
+                <Globe className="w-3.5 h-3.5 text-amber-400" /> URL do Mapa (Google Maps Embed)
+              </label>
+              <input
+                type="text"
+                value={googleMapsEmbedUrl}
+                onChange={(e) => handleEmbedUrlChange(e.target.value)}
+                placeholder="Cole o link src do Google Maps ou a tag <iframe src='...'>"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-amber-200 font-mono focus:outline-none focus:border-amber-500"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                Dica: No Google Maps, clique em <strong>Compartilhar &gt; Incorporar um mapa</strong> e cole a URL do atributo <code>src="..."</code> ou a tag HTML completa.
+              </p>
+            </div>
+
+            {/* Live Map Preview */}
+            <div className="space-y-2 pt-2">
+              <span className="text-[11px] font-bold text-slate-400 block">Pré-visualização do Mapa no Portal:</span>
+              <div className="rounded-2xl overflow-hidden h-48 border border-slate-800 bg-slate-900">
+                {googleMapsEmbedUrl && googleMapsEmbedUrl.trim() !== '' ? (
+                  <iframe
+                    title="Pré-visualização do Mapa"
+                    src={googleMapsEmbedUrl}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">
+                    Nenhum mapa configurado
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Cadastro e Gestão de Fotos do Evento (Anterior e Atual) */}
+          <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-amber-400" /> Fotos do Evento Anterior & Evento Atual
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Cadastre imagens e vídeos para exibir na galeria da página inicial.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRestoreDefaultGallery}
+                className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-amber-300 text-[11px] font-semibold flex items-center gap-1.5 border border-slate-800 transition-colors self-start sm:self-auto cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Restaurar Galeria Padrão
+              </button>
+            </div>
+
+            {/* Form to add new photo */}
+            <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-4">
+              <p className="text-xs font-bold text-white flex items-center gap-2">
+                <Plus className="w-4 h-4 text-amber-400" /> Cadastrar Nova Foto ou Vídeo
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Category Selection */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Categoria do Evento</label>
+                  <select
+                    value={newPhotoCategory}
+                    onChange={(e) => setNewPhotoCategory(e.target.value as 'anterior' | 'atual')}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="anterior">Evento Anterior (Edição Passada)</option>
+                    <option value="atual">Evento Atual (Edição 2026)</option>
+                  </select>
+                </div>
+
+                {/* Type Selection */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Tipo de Mídia</label>
+                  <select
+                    value={newPhotoType}
+                    onChange={(e) => setNewPhotoType(e.target.value as 'photo' | 'video')}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="photo">Foto / Imagem</option>
+                    <option value="video">Vídeo Embed (YouTube/Vimeo)</option>
+                  </select>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Título da Foto</label>
+                  <input
+                    type="text"
+                    value={newPhotoTitle}
+                    onChange={(e) => setNewPhotoTitle(e.target.value)}
+                    placeholder="Ex: Tocata das Crianças 2025"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Upload or Link Input */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-slate-400 block">Enviar Imagem do Dispositivo ou Digitar URL</label>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* File Upload Button */}
+                  <label className="flex items-center justify-center gap-2 p-3 bg-slate-950 border border-dashed border-slate-700 hover:border-amber-500 rounded-xl text-xs font-semibold text-amber-300 cursor-pointer transition-colors">
+                    <Upload className="w-4 h-4 text-amber-400" />
+                    <span>{selectedFileName ? selectedFileName : 'Selecionar Arquivo de Foto'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* URL Input */}
+                  <input
+                    type="text"
+                    value={newPhotoUrl}
+                    onChange={(e) => {
+                      setNewPhotoUrl(e.target.value);
+                      setSelectedFileName('');
+                    }}
+                    placeholder="Ou cole a URL da imagem (https://...)"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">Descrição Curta</label>
+                <input
+                  type="text"
+                  value={newPhotoDesc}
+                  onChange={(e) => setNewPhotoDesc(e.target.value)}
+                  placeholder="Ex: Momento especial da orquestra tocando juntas no gramado da chácara."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddPhotoItem}
+                className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/10 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Adicionar Mídia à Galeria
+              </button>
+            </div>
+
+            {/* List / Tabs of Existing Photos */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-slate-300">
+                  Fotos Cadastradas ({galleryList.length}):
+                </p>
+
+                {/* Filter Tabs */}
+                <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setActiveGalleryTab('anterior')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                      activeGalleryTab === 'anterior'
+                        ? 'bg-amber-500 text-slate-950 shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Evento Anterior ({galleryList.filter((g) => g.category === 'anterior').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveGalleryTab('atual')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                      activeGalleryTab === 'atual'
+                        ? 'bg-amber-500 text-slate-950 shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Evento Atual ({galleryList.filter((g) => g.category === 'atual').length})
+                  </button>
+                </div>
+              </div>
+
+              {filteredGallery.length === 0 ? (
+                <div className="p-6 text-center bg-slate-900/60 border border-slate-800 rounded-2xl text-slate-500 text-xs">
+                  Nenhuma foto cadastrada nesta categoria ainda. Cadastre acima!
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto p-1">
+                  {filteredGallery.map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex gap-3 items-center justify-between group hover:border-slate-700"
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-14 h-14 rounded-lg bg-slate-950 overflow-hidden shrink-0 border border-slate-800 relative">
+                          {item.thumbnailUrl && item.thumbnailUrl.trim() !== '' ? (
+                            <img
+                              src={item.thumbnailUrl}
+                              alt={item.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-slate-900 flex items-center justify-center text-slate-600">
+                              <ImageIcon className="w-5 h-5" />
+                            </div>
+                          )}
+                          {item.type === 'video' && (
+                            <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center">
+                              <Film className="w-4 h-4 text-amber-400" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="overflow-hidden">
+                          <h4 className="text-xs font-bold text-white truncate">{item.title}</h4>
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.description}</p>
+                          <span className="inline-block mt-1 text-[9px] px-2 py-0.5 bg-slate-950 text-amber-300 rounded border border-slate-800 font-mono">
+                            {item.category === 'anterior' ? 'Evento Passado' : 'Edição 2026'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhotoItem(item.id)}
+                        className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 transition-colors shrink-0 cursor-pointer"
+                        title="Excluir foto"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-8 py-3.5 rounded-2xl bg-amber-500 text-slate-950 font-black text-sm hover:bg-amber-400 transition-all shadow-xl shadow-amber-500/20 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+            >
+              <Save className="w-5 h-5" />
+              {saving ? 'Salvando Alterações...' : 'Salvar Configurações'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
