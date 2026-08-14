@@ -111,9 +111,32 @@ export const ProofLookup: React.FC<ProofLookupProps> = ({ onUpdated, proofPhoneN
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
+      let finalUrl = reader.result as string;
+
+      // Try uploading file directly to Vercel Blob
+      try {
+        const blobRes = await fetch('/api/blob/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: `comprovante_${Date.now()}_${file.name}`,
+            content: finalUrl,
+            contentType: isPdf ? 'application/pdf' : 'image/jpeg'
+          })
+        });
+        if (blobRes.ok) {
+          const blobData = await blobRes.json();
+          if (blobData.url) {
+            finalUrl = blobData.url;
+          }
+        }
+      } catch (err) {
+        console.warn('Note: Blob upload fallback to inline data:', err);
+      }
+
       setProofFile({
-        url: reader.result as string,
+        url: finalUrl,
         name: file.name,
         type: isPdf ? 'pdf' : 'image'
       });

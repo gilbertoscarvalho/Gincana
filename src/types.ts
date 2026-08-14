@@ -42,10 +42,10 @@ export interface EventSettings {
   eventName?: string;         // Nome/Título da Aplicação no topo
   logoUrl?: string;           // URL/Base64 da Logo da gincana
   proofPhoneNumber?: string;  // Número de telefone/WhatsApp para envio do comprovante
-  driveFolderId?: string;     // ID da Pasta no Google Drive para armazenar comprovantes e banco de dados
-  driveFolderName?: string;   // Nome da Pasta no Google Drive
-  driveAccessToken?: string;  // Access token do Google Drive (opcional para auto-sync)
-  driveAutoSync?: boolean;    // Habilitar sincronização automática
+  blobReadWriteToken?: string; // Token de leitura/escrita do Vercel Blob (BLOB_READ_WRITE_TOKEN)
+  blobAutoSync?: boolean;     // Habilitar sincronização automática com Vercel Blob
+  blobStorageUrl?: string;    // URL do backup principal no Vercel Blob
+  blobLastSyncAt?: string;    // Data da última sincronização com Vercel Blob
   theme?: 'dark' | 'light';   // Tema de cores da aplicação
 }
 

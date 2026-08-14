@@ -21,22 +21,14 @@ import {
   Film,
   Phone,
   MessageCircle,
-  HardDrive,
-  CloudUpload,
-  CloudDownload,
-  RefreshCw,
-  Download,
-  FolderOpen
+  Download
 } from 'lucide-react';
 import { EventSettings, GalleryMediaItem } from '../types';
 import {
-  requestGoogleDriveToken,
-  uploadBackupToDriveFolder,
-  downloadBackupFromDriveFolder,
   downloadLocalJsonBackup,
   readLocalJsonFile,
   FullBackupData
-} from '../lib/googleDrive';
+} from '../lib/vercelBlob';
 
 interface AdminSettingsProps {
   settings: EventSettings;
@@ -151,120 +143,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // Google Drive & Persistence States
-  const [driveFolderId, setDriveFolderId] = useState<string>(settings.driveFolderId || '1OgmzxYTxAKZJ62ZPcAQoTQi2GsdKrscl');
-  const [driveFolderName, setDriveFolderName] = useState<string>(settings.driveFolderName || 'Gincana_Backup');
-  const [driveAccessToken, setDriveAccessToken] = useState<string>(settings.driveAccessToken || '');
-  const [driveAutoSync, setDriveAutoSync] = useState<boolean>(settings.driveAutoSync ?? true);
-  const [driveStatusMsg, setDriveStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [driveLoading, setDriveLoading] = useState<boolean>(false);
-
-  // Trigger Google Drive OAuth Authorize
-  const handleConnectDrive = () => {
-    setDriveStatusMsg(null);
-    setDriveLoading(true);
-    requestGoogleDriveToken(
-      (token) => {
-        setDriveAccessToken(token);
-        setDriveLoading(false);
-        setDriveStatusMsg({
-          type: 'success',
-          text: 'Conectado ao Google Drive com sucesso! Agora você pode sincronizar os dados.'
-        });
-      },
-      (err) => {
-        setDriveLoading(false);
-        setDriveStatusMsg({
-          type: 'error',
-          text: 'Falha ao conectar com o Google Drive: ' + (err.message || 'Autorização não concluída.')
-        });
-      }
-    );
-  };
-
-  // Upload/Sync backup to Google Drive
-  const handleBackupToDriveNow = async () => {
-    if (!driveFolderId.trim()) {
-      setDriveStatusMsg({ type: 'error', text: 'Por favor, informe o ID da pasta do Google Drive.' });
-      return;
-    }
-    if (!driveAccessToken.trim()) {
-      setDriveStatusMsg({ type: 'error', text: 'Por favor, clique em "Conectar Google Drive" para autorizar o acesso.' });
-      return;
-    }
-
-    setDriveLoading(true);
-    setDriveStatusMsg(null);
-
-    try {
-      const res = await fetch('/api/backup/export');
-      if (!res.ok) throw new Error('Falha ao gerar o arquivo de dados do servidor.');
-      const backupData: FullBackupData = await res.json();
-
-      const result = await uploadBackupToDriveFolder(driveFolderId, driveAccessToken, backupData);
-      if (result.success) {
-        setDriveStatusMsg({ type: 'success', text: '✅ ' + result.message });
-      } else {
-        setDriveStatusMsg({ type: 'error', text: '❌ ' + result.message });
-      }
-    } catch (err: any) {
-      setDriveStatusMsg({ type: 'error', text: 'Erro ao fazer backup: ' + err.message });
-    } finally {
-      setDriveLoading(false);
-    }
-  };
-
-  // Download/Restore backup from Google Drive
-  const handleRestoreFromDriveNow = async () => {
-    if (!driveFolderId.trim()) {
-      setDriveStatusMsg({ type: 'error', text: 'Por favor, informe o ID da pasta do Google Drive.' });
-      return;
-    }
-    if (!driveAccessToken.trim()) {
-      setDriveStatusMsg({ type: 'error', text: 'Por favor, clique em "Conectar Google Drive" para autorizar o acesso.' });
-      return;
-    }
-
-    if (!window.confirm('Atenção: A restauração irá substituir todos os dados atuais da aplicação pelos dados do backup salvo no Google Drive. Deseja continuar?')) {
-      return;
-    }
-
-    setDriveLoading(true);
-    setDriveStatusMsg(null);
-
-    try {
-      const result = await downloadBackupFromDriveFolder(driveFolderId, driveAccessToken);
-      if (result.success && result.data) {
-        const importRes = await fetch('/api/backup/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            settings: result.data.settings,
-            participants: result.data.participants
-          })
-        });
-
-        if (importRes.ok) {
-          setDriveStatusMsg({ type: 'success', text: '🎉 Todos os dados e configurações foram restaurados com sucesso do Google Drive!' });
-          if (result.data.settings) {
-            setEventName(result.data.settings.eventName || eventName);
-            setLogoUrl(result.data.settings.logoUrl || logoUrl);
-            if (result.data.settings.congregations) setCongregationsList(result.data.settings.congregations);
-            if (result.data.settings.galleryItems) setGalleryList(result.data.settings.galleryItems);
-          }
-        } else {
-          throw new Error('Falha ao importar dados restaurados no servidor.');
-        }
-      } else {
-        setDriveStatusMsg({ type: 'error', text: result.message });
-      }
-    } catch (err: any) {
-      setDriveStatusMsg({ type: 'error', text: 'Erro ao restaurar do Google Drive: ' + err.message });
-    } finally {
-      setDriveLoading(false);
-    }
-  };
 
   // Local JSON Export
   const handleExportLocalJson = async () => {
@@ -438,11 +316,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
           galleryItems: galleryList,
           eventName,
           logoUrl,
-          proofPhoneNumber,
-          driveFolderId,
-          driveFolderName,
-          driveAccessToken,
-          driveAutoSync
+          proofPhoneNumber
         },
         adminPasswordInput
       );
@@ -450,11 +324,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
       if (ok) {
         setSuccessMsg('Configurações salvas com sucesso!');
         setNewAdminPassword('');
-
-        // If auto sync is enabled and we have folder id + token, sync backup to drive
-        if (driveFolderId.trim() && driveAccessToken.trim() && driveAutoSync) {
-          handleBackupToDriveNow();
-        }
       } else {
         setErrorMsg('Não foi possível salvar as alterações. Verifique sua senha de administrador.');
       }
@@ -606,156 +475,37 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
             </div>
           </div>
 
-          {/* Section: Google Drive Persistence & Backup */}
-          <div className="space-y-4 bg-slate-950/80 border border-amber-500/30 p-5 rounded-2xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-extrabold text-amber-300 uppercase tracking-wider flex items-center gap-2">
-                <HardDrive className="w-4 h-4 text-amber-400" />
-                Armazenamento & Persistência no Google Drive
-              </h3>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Conecte uma pasta do Google Drive para salvar e sincronizar a base de dados de <strong>cadastros</strong>, <strong>comprovantes (prints/PDFs)</strong>, <strong>fotos dos eventos</strong> e <strong>configurações</strong>.
-            </p>
-
-            {/* Status Alert */}
-            {driveStatusMsg && (
-              <div
-                className={`p-3 rounded-xl text-xs flex items-center gap-2.5 ${
-                  driveStatusMsg.type === 'success'
-                    ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-200'
-                    : 'bg-rose-500/20 border border-rose-500/40 text-rose-200'
-                }`}
-              >
-                {driveStatusMsg.type === 'success' ? (
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                )}
-                <span>{driveStatusMsg.text}</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-              {/* Folder ID Field */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                  <FolderOpen className="w-4 h-4 text-amber-400" />
-                  ID da Pasta no Google Drive
-                </label>
-                <input
-                  type="text"
-                  value={driveFolderId}
-                  onChange={(e) => {
-                    let val = e.target.value.trim();
-                    if (val.includes('/folders/')) {
-                      const match = val.match(/\/folders\/([a-zA-Z0-9_-]+)/);
-                      if (match && match[1]) {
-                        val = match[1];
-                      }
-                    } else if (val.includes('id=')) {
-                      const match = val.match(/id=([a-zA-Z0-9_-]+)/);
-                      if (match && match[1]) {
-                        val = match[1];
-                      }
-                    }
-                    setDriveFolderId(val);
-                  }}
-                  placeholder="Cole o ID ou o link completo da pasta do Google Drive"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-amber-200 font-mono focus:outline-none focus:border-amber-500"
-                />
-                <p className="text-[10px] text-slate-400">
-                  Cole o link completo da pasta (ex: https://drive.google.com/drive/u/0/folders/1OgmzxYTxAKZJ62ZPcAQoTQi2GsdKrscl) ou apenas o ID.
-                </p>
-              </div>
-
-              {/* OAuth Authorization Button */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                  <Key className="w-4 h-4 text-amber-400" />
-                  Autorização Google Drive (OAuth)
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleConnectDrive}
-                    disabled={driveLoading}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${driveLoading ? 'animate-spin' : ''}`} />
-                    {driveAccessToken ? 'Google Drive Conectado' : 'Conectar Google Drive'}
-                  </button>
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  Status: {driveAccessToken ? '✅ Autorizado' : '⚠️ Não conectado'}
-                </p>
-              </div>
-            </div>
-
-            {/* Auto Sync Checkbox */}
-            <div className="pt-2 border-t border-slate-800 flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="driveAutoSync"
-                checked={driveAutoSync}
-                onChange={(e) => setDriveAutoSync(e.target.checked)}
-                className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
-              />
-              <label htmlFor="driveAutoSync" className="text-xs font-bold text-amber-200 cursor-pointer">
-                Sincronizar automaticamente com o Google Drive ao salvar alterações
-              </label>
-            </div>
-
-            {/* Drive Actions: Sync & Restore Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handleBackupToDriveNow}
-                disabled={driveLoading}
-                className="py-3 px-4 rounded-xl bg-amber-500 text-slate-950 font-black text-xs hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
-              >
-                <CloudUpload className="w-4 h-4" />
-                Salvar & Fazer Backup no Google Drive
-              </button>
-
-              <button
-                type="button"
-                onClick={handleRestoreFromDriveNow}
-                disabled={driveLoading}
-                className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <CloudDownload className="w-4 h-4" />
-                Restaurar Dados do Google Drive
-              </button>
-            </div>
-
-            {/* Local File Fallback Section */}
-            <div className="pt-3 border-t border-slate-800 space-y-2">
-              <span className="text-[11px] font-bold text-slate-400 block">
-                Backup Local (.JSON) - Alternativa Manual Instantânea:
+          {/* Section: Backup Manual Local (.JSON) */}
+          <div className="bg-slate-950/80 border border-slate-800 p-5 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <span className="text-xs font-extrabold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                <Download className="w-4 h-4 text-amber-400" />
+                Cópia de Segurança Local (.JSON)
               </span>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={handleExportLocalJson}
-                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs flex items-center gap-2 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5 text-amber-400" />
-                  Baixar Arquivo JSON Local
-                </button>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Você pode baixar uma cópia do banco de dados em formato JSON ou restaurar uma cópia salva no seu computador.
+            </p>
+            <div className="flex flex-wrap gap-3 pt-1">
+              <button
+                type="button"
+                onClick={handleExportLocalJson}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs flex items-center gap-2 cursor-pointer transition-colors"
+              >
+                <Download className="w-4 h-4 text-amber-400" />
+                Baixar Arquivo JSON Local
+              </button>
 
-                <label className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs flex items-center gap-2 cursor-pointer">
-                  <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                  Carregar Arquivo JSON Local
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleImportLocalJsonFile}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+              <label className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs flex items-center gap-2 cursor-pointer transition-colors">
+                <Upload className="w-4 h-4 text-emerald-400" />
+                Carregar Arquivo JSON Local
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportLocalJsonFile}
+                  className="hidden"
+                />
+              </label>
             </div>
           </div>
 

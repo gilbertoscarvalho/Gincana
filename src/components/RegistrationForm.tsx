@@ -64,7 +64,39 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ congregation
     setTimeout(() => setCopiedPhone(false), 2500);
   };
 
-  // File handle (convert to Base64)
+  // Helper to compress uploaded images for small payload sizes
+  const compressImage = (dataUrl: string, maxDimension = 1200, quality = 0.7): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
+
+  // File handle (convert to Base64 with compression)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -83,9 +115,35 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ congregation
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
+      let finalUrl = reader.result as string;
+      if (isImg) {
+        finalUrl = await compressImage(finalUrl);
+      }
+
+      // Try uploading file directly to Vercel Blob storage
+      try {
+        const blobRes = await fetch('/api/blob/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: `comprovante_${Date.now()}_${file.name}`,
+            content: finalUrl,
+            contentType: isPdf ? 'application/pdf' : 'image/jpeg'
+          })
+        });
+        if (blobRes.ok) {
+          const blobData = await blobRes.json();
+          if (blobData.url) {
+            finalUrl = blobData.url;
+          }
+        }
+      } catch (err) {
+        console.warn('Note: Blob upload fallback to inline data:', err);
+      }
+
       setProofFile({
-        url: reader.result as string,
+        url: finalUrl,
         name: file.name,
         type: isPdf ? 'pdf' : 'image'
       });
@@ -141,7 +199,18 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ congregation
         body: JSON.stringify(payload)
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        if (!res.ok) {
+          if (res.status === 413) {
+            throw new Error('O arquivo de comprovante é muito grande. Por favor, escolha uma imagem menor.');
+          }
+          throw new Error(`Erro na comunicação com o servidor (${res.status}). Tente novamente.`);
+        }
+      }
 
       if (!res.ok) {
         throw new Error(data.error || 'Erro ao efetuar cadastro.');
