@@ -1,0 +1,55 @@
+{
+  "ticketPrice": 25,
+  "revenueGoal": 2500,
+  "adminPassword": "ccb*2026",
+  "eventDate": "2026-09-08T02:30:00.000Z",
+  "locationName": "Espaço e Chácara \"Somos Jóias Preciosas\"",
+  "locationAddress": "Fazenda Chico Pinto, Bairro Cedro. São Gonçalo dos Campos",
+  "googleMapsEmbedUrl": "https://www.google.com/maps/embed?pb=!1m17!1m12!1m3!1d3896.670711455419!2d-38.93708902493298!3d-12.404963687860697!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m2!1m1!2zMTLCsDI0JzE3LjkiUyAzOMKwNTYnMDQuMyJX!5e0!3m2!1spt-BR!2sbr!4v1786794586966!5m2!1spt-BR!2sbr",
+  "congregations": [
+    "São Gonçalo dos Campos",
+    "Magalhães",
+    "Tapera"
+  ],
+  "eventName": "Somos Jóias Preciosas",
+  "logoUrl": "",
+  "proofPhoneNumber": "5575999999999",
+  "galleryItems": [
+    {
+      "id": "media-prev-1",
+      "title": "Tocata Especial dos Jovens (Edição Anterior)",
+      "category": "anterior",
+      "type": "photo",
+      "url": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80",
+      "description": "Momentos inesquecíveis da orquestra e tocata de jovens na edição anterior."
+    },
+    {
+      "id": "media-prev-2",
+      "title": "Gincana e Dinâmicas em Equipe",
+      "category": "anterior",
+      "type": "photo",
+      "url": "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=80",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=600&q=80",
+      "description": "Muita alegria, comunhão e integração entre as congregações."
+    },
+    {
+      "id": "media-prev-3",
+      "title": "Almoço e Confraternização",
+      "category": "anterior",
+      "type": "photo",
+      "url": "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=1200&q=80",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=600&q=80",
+      "description": "Mesa farta e confraternização entre todos os irmãos e visitantes."
+    },
+    {
+      "id": "media-curr-1",
+      "title": "Prévia da Edição Atual (2026)",
+      "category": "atual",
+      "type": "photo",
+      "url": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80",
+      "description": "Preparativos a todo vapor para o grande dia! As fotos do evento atual serão publicadas aqui."
+    }
+  ]
+}
