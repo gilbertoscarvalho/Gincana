@@ -1,0 +1,6 @@
+{
+  "name": "Somos Jóias Preciosas",
+  "description": "Plataforma de gestão do evento Somos Jóias Preciosas - Inscrição, envio de comprovantes da Gincana e Tocata, controle de mantimentos e dashboard de métricas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
