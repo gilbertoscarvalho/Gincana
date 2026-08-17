@@ -1,0 +1,227 @@
+import React from 'react';
+import { Home as HomeIcon, UserPlus, FileCheck, BarChart3, Users, Settings, Sparkles, Sun, Moon, Music } from 'lucide-react';
+import { TopBarAccess } from './TopBarAccess';
+
+interface NavbarProps {
+  activeTab: 'home' | 'register' | 'lookup' | 'dashboard' | 'list' | 'settings';
+  setActiveTab: (tab: 'home' | 'register' | 'lookup' | 'dashboard' | 'list' | 'settings') => void;
+  totalParticipants: number;
+  pendingProofsCount: number;
+  isAdminUnlocked: boolean;
+  onAdminSubmit: (password: string) => Promise<boolean>;
+  onLockAdmin: () => void;
+  onQuickLookup: (firstName: string, congregation: string, age: number) => void;
+  eventName?: string;
+  logoUrl?: string;
+  theme?: 'dark' | 'light';
+  onToggleTheme?: () => void;
+  hasAudioTrack?: boolean;
+  isPlayingAudio?: boolean;
+  onTogglePlayAudio?: () => void;
+  backgroundMusicTitle?: string;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({
+  activeTab,
+  setActiveTab,
+  totalParticipants,
+  pendingProofsCount,
+  isAdminUnlocked,
+  onAdminSubmit,
+  onLockAdmin,
+  onQuickLookup,
+  eventName,
+  logoUrl,
+  theme = 'dark',
+  onToggleTheme,
+  hasAudioTrack = false,
+  isPlayingAudio = false,
+  onTogglePlayAudio,
+  backgroundMusicTitle
+}) => {
+  return (
+    <header className="bg-slate-900 text-white border-b border-amber-500/20 sticky top-0 z-40 shadow-xl">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row items-center justify-between py-3.5 gap-3">
+          {/* Logo & Event Title */}
+          <div
+            onClick={() => setActiveTab('home')}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            {logoUrl && logoUrl.trim() !== '' ? (
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden border border-amber-500/40 bg-slate-950 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform p-0.5">
+                <img
+                  src={logoUrl}
+                  alt="Logo Gincana"
+                  className="w-full h-full object-cover rounded-xl"
+                />
+              </div>
+            ) : (
+              <div className="p-2.5 bg-gradient-to-tr from-amber-500 to-amber-300 rounded-2xl shadow-lg shadow-amber-500/20 text-slate-950 font-bold group-hover:scale-105 transition-transform shrink-0">
+                <Sparkles className="w-6 h-6 sm:w-7 sm:h-7" />
+              </div>
+            )}
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-amber-200 via-amber-100 to-white bg-clip-text text-transparent">
+                  {eventName || 'Somos Jóias Preciosas'}
+                </h1>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  2026
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-amber-200/70 font-medium">
+                Gincana & Tocata • Portal do Participante
+              </p>
+            </div>
+          </div>
+
+          {/* Right Header Section: Hymn Toggle, Theme Toggle & TopBarAccess Widget */}
+          <div className="flex items-center justify-end flex-wrap gap-2 sm:gap-2.5 w-full sm:w-auto border-t sm:border-0 border-slate-800/80 pt-2 sm:pt-0">
+            {/* Header Audio Hymn Switch (Hino Liga/Desliga no Topo da Aplicação) */}
+            {onTogglePlayAudio && (
+              <label
+                className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-xl border shadow-sm transition-all select-none shrink-0 ${
+                  isPlayingAudio
+                    ? 'bg-amber-500/20 border-amber-500/50 shadow-amber-500/10'
+                    : 'bg-slate-800 hover:bg-slate-700/80 border-slate-700'
+                }`}
+                title={isPlayingAudio ? 'Clique para desligar o hino' : 'Clique para ligar o hino'}
+              >
+                <input
+                  type="checkbox"
+                  checked={isPlayingAudio}
+                  onChange={onTogglePlayAudio}
+                  className="sr-only peer"
+                />
+                <div className="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-amber-500 relative"></div>
+                <span className={`text-xs font-bold flex items-center gap-1.5 ${isPlayingAudio ? 'text-amber-300' : 'text-slate-300'}`}>
+                  <Music className={`w-3.5 h-3.5 ${isPlayingAudio ? 'text-amber-400 animate-spin' : 'text-slate-400'}`} style={{ animationDuration: '3s' }} />
+                  <span className="whitespace-nowrap">{isPlayingAudio ? 'Hino Ativado (Ligado)' : 'Hino Desativado (Desligado)'}</span>
+                </span>
+              </label>
+            )}
+
+            {onToggleTheme && (
+              <button
+                onClick={onToggleTheme}
+                title={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition-all cursor-pointer shrink-0 shadow-sm"
+              >
+                {theme === 'dark' ? (
+                  <>
+                    <Sun className="w-4 h-4 text-amber-400" />
+                    <span className="hidden sm:inline">Modo Claro</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-4 h-4 text-indigo-400" />
+                    <span className="hidden sm:inline">Modo Escuro</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Header Right Admin Access Widget */}
+            <TopBarAccess
+              onLookupSubmit={(firstName, congregation, age) => {
+                onQuickLookup(firstName, congregation, age);
+                setActiveTab('lookup');
+              }}
+              onAdminSubmit={onAdminSubmit}
+              isAdminUnlocked={isAdminUnlocked}
+              onLockAdmin={onLockAdmin}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+            />
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <nav className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-3 pt-2 scrollbar-none border-t border-slate-800/80">
+          {/* PARTICIPANT TABS (Always visible) */}
+          <button
+            onClick={() => setActiveTab('home')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'home'
+                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/25'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+            }`}
+          >
+            <HomeIcon className="w-4 h-4" />
+            Início (Sobre o Evento)
+          </button>
+
+          <button
+            onClick={() => setActiveTab('register')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'register'
+                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/25'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+            }`}
+          >
+            <UserPlus className="w-4 h-4" />
+            Inscrever-se
+          </button>
+
+          <button
+            onClick={() => setActiveTab('lookup')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'lookup'
+                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/25'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+            }`}
+          >
+            <FileCheck className="w-4 h-4" />
+            Meu Cadastro / Comprovante
+          </button>
+
+          {/* ADMIN ONLY TABS (Hidden when not unlocked) */}
+          {isAdminUnlocked && (
+            <>
+              <div className="h-5 w-px bg-slate-800 mx-1 hidden sm:block" />
+              
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  activeTab === 'dashboard'
+                    ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/25'
+                    : 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span>Dashboard</span>
+                <span className="text-[9px] bg-slate-950 text-emerald-300 px-1.5 py-0.5 rounded font-black">Admin</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('list')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  activeTab === 'list'
+                    ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/25'
+                    : 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>Inscritos</span>
+                <span className="text-[9px] bg-slate-950 text-emerald-300 px-1.5 py-0.5 rounded font-black">Admin</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  activeTab === 'settings'
+                    ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/25'
+                    : 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30'
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                <span>Configurações</span>
+                <span className="text-[9px] bg-slate-950 text-emerald-300 px-1.5 py-0.5 rounded font-black">Admin</span>
+              </button>
+            </>
+          )}
+        </nav>
+      </div>
+    </header>
+  );
+};
