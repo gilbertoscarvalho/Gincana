@@ -1,0 +1,71 @@
+{
+  "ticketPrice": 25,
+  "revenueGoal": 2500,
+  "adminPassword": "ccb*2026",
+  "eventDate": "2026-09-07T11:00:00.000Z",
+  "locationName": "Espaço e Chácara 'Somos Jóias Preciosas'",
+  "locationAddress": "Fazenda Chico Pinto, Bairro Cedro. São Gonçalo dos Campos",
+  "googleMapsEmbedUrl": "https://www.google.com/maps/embed?pb=!1m17!1m12!1m3!1d3896.670711455419!2d-38.93708902493298!3d-12.404963687860697!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m2!1m1!2zMTLCsDI0JzE3LjkiUyAzOMKwNTYnMDQuMyJX!5e0!3m2!1spt-BR!2sbr!4v1786894792405!5m2!1spt-BR!2sbr",
+  "congregations": [
+    "São Gonçalo dos Campos",
+    "Magalhães",
+    "Tapera",
+    "Fraternidade",
+    "Panorama",
+    "Tomba",
+    "Feira X",
+    "Jardim Cruzeiro",
+    "Ponto Central"
+  ],
+  "teams": [
+    {
+      "id": "rubi",
+      "name": "Equipe Rubi",
+      "color": "from-rose-600 to-red-500",
+      "badgeBg": "bg-rose-500/20",
+      "badgeText": "text-rose-300 border-rose-500/30",
+      "description": "Conhecida pela garra, entusiasmo vibrante e forte união nas provas de esforço da Gincana.",
+      "motto": "Brilhando com amor e perseverança!",
+      "iconName": "Gem"
+    },
+    {
+      "id": "safira",
+      "name": "Equipe Safira",
+      "color": "from-sky-600 to-blue-500",
+      "badgeBg": "bg-sky-500/20",
+      "badgeText": "text-sky-300 border-sky-500/30",
+      "description": "Destaca-se pela sabedoria, trabalho em equipe estratégico e harmonia nas atividades em conjunto.",
+      "motto": "Firmes na fé, unidos no louvor!",
+      "iconName": "Sparkles"
+    },
+    {
+      "id": "esmeralda",
+      "name": "Equipe Esmeralda",
+      "color": "from-emerald-600 to-teal-500",
+      "badgeBg": "bg-emerald-500/20",
+      "badgeText": "text-emerald-300 border-emerald-500/30",
+      "description": "Marcada pela vitalidade, alegria constante, dinamismo nas tarefas e espírito de companheirismo.",
+      "motto": "Esperança viva e comunhão em cada passo!",
+      "iconName": "Shield"
+    },
+    {
+      "id": "diamante",
+      "name": "Equipe Diamante",
+      "color": "from-amber-500 to-yellow-400",
+      "badgeBg": "bg-amber-500/20",
+      "badgeText": "text-amber-300 border-amber-500/30",
+      "description": "Resistentes e focados, reúnem músicos e jovens dispostos a dar o seu melhor com excelência.",
+      "motto": "Inabaláveis em louvor e serviço!",
+      "iconName": "Award"
+    }
+  ],
+  "eventName": "Somos Jóias Preciosas",
+  "logoUrl": "",
+  "whatsappGroupUrl": "https://chat.whatsapp.com/Bf4nIjDR6QCFXEuxm7S3gK",
+  "pixKey": "gincana.joias2026@gmail.com",
+  "blobAutoSync": true,
+  "galleryItems": [],
+  "backgroundMusicUrl": "/uploads/audio/Se_vos_baterdes_Ele_vos_abre.mp3",
+  "backgroundMusicTitle": "Se Vós Baterdes Ele Vos Abre",
+  "backgroundMusicEnabled": true
+}
